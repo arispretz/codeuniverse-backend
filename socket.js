@@ -5,7 +5,11 @@
 import { Server } from "socket.io";
 import { getAuth } from "firebase-admin/auth";
 import { User } from "./models/User.js";
-import { runFastapiModel } from "../services/fastapiModelRunner.js";
+import {
+  runFastapiReply,
+  runFastapiGenerate,
+  runFastapiAutocomplete
+} from "./services/fastapiModelRunner.js";
 
 const corsOriginsEnv = process.env.SOCKET_CORS_ORIGINS;
 if (!corsOriginsEnv) {
@@ -21,7 +25,7 @@ export function setupSocket(server) {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    pingTimeout: 120000, // more tolerance
+    pingTimeout: 120000,
     pingInterval: 25000,
   });
 
@@ -59,19 +63,48 @@ export function setupSocket(server) {
       socket.emit("heartbeat_ack", { ts: Date.now() });
     });
 
-    // Assistant
     socket.on("assistant_prompt", async (prompt) => {
       try {
-        const response = await runFastapiModel({
+        const response = await runFastapiReply({
           prompt,
           language: "",
+          code: "",
           user_id: socket.user.uid,
           user_level: socket.user.role,
+          token: socket.handshake.auth?.token,
         });
         socket.emit("assistant_response", response);
       } catch (err) {
         console.error("❌ Assistant error:", err.message);
         socket.emit("assistant_response", "Error generating response");
+      }
+    });
+
+    socket.on("assistant_generate", async ({ prompt, language }) => {
+      try {
+        const code = await runFastapiGenerate({
+          prompt,
+          language,
+          token: socket.handshake.auth?.token,
+        });
+        socket.emit("assistant_generate_response", code);
+      } catch (err) {
+        console.error("❌ Generate error:", err.message);
+        socket.emit("assistant_generate_response", "Error generating code");
+      }
+    });
+
+    socket.on("assistant_autocomplete", async ({ code, language }) => {
+      try {
+        const suggestion = await runFastapiAutocomplete({
+          code,
+          language,
+          token: socket.handshake.auth?.token,
+        });
+        socket.emit("assistant_autocomplete_response", suggestion);
+      } catch (err) {
+        console.error("❌ Autocomplete error:", err.message);
+        socket.emit("assistant_autocomplete_response", "Error generating suggestion");
       }
     });
 
