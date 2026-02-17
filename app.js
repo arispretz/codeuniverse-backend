@@ -127,6 +127,13 @@ app.use('/api/users', userRouter);
 app.use('/api', roleRouter);
 app.use('/api/avatars', avatarRouter);
 
+app.use('/docs', (req, res) => {
+res.redirect('https://arispretz-codeuniverse-ai_assistant.hf.space/docs');
+});
+app.use('/openapi.json', (req, res) => {
+res.redirect('https://arispretz-codeuniverse-ai_assistant.hf.space/openapi.json');
+});
+
 /**
  * Catch-all for unmatched /api routes
  */
