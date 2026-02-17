@@ -19,7 +19,7 @@ export async function runFastapiReply({ prompt, language, code, user_id, user_le
     { prompt, language, code, user_id, user_level },
     { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
   );
-  return data.response || data.reply;
+  return data.reply;
 }
 
 /**
