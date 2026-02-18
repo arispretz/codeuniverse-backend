@@ -19,7 +19,7 @@ export const generateCode = async (req, res) => {
 
   try {
     // ✅ Call FastAPI generate service
-    const response = await runFastapiGenerate({
+    const code = await runFastapiGenerate({
       prompt,
       language,
       token: req.headers.authorization?.replace("Bearer ", ""),
@@ -38,7 +38,7 @@ export const generateCode = async (req, res) => {
     }
 
     // ✅ Return FastAPI response to frontend
-    res.json(response.data);
+    res.json({ code });
   } catch (error) {
     // ✅ Capture HTTP status from FastAPI or default to 500
     const status = error.response?.status || 500;

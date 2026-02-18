@@ -14,7 +14,7 @@ export const generateCodeReplyOnly = async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "");
 
     // ✅ Call FastAPI reply-code-only service
-    const response = await runFastapiReplyCodeOnly({
+    const generatedCode = await runFastapiReplyCodeOnly({
       prompt,
       language,
       code,
@@ -23,7 +23,7 @@ export const generateCodeReplyOnly = async (req, res) => {
     });
 
     // ✅ Return FastAPI response to frontend
-    res.json(response.data);
+    res.json({ code: generatedCode });
   } catch (error) {
     // ✅ Capture HTTP status from FastAPI or default to 500
     const status = error.response?.status || 500;

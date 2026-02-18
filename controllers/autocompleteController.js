@@ -19,7 +19,7 @@ export const generateAutocomplete = async (req, res) => {
 
   try {
     // ✅ Call FastAPI autocomplete service
-    const response = await runFastapiAutocomplete({
+    const suggestion = await runFastapiAutocomplete({
       code,
       language,
       token: req.headers.authorization?.replace("Bearer ", ""),
@@ -38,7 +38,7 @@ export const generateAutocomplete = async (req, res) => {
     }
 
     // ✅ Return FastAPI response to frontend
-    res.json(response.data);
+    res.json({ suggestion });
   } catch (error) {
     // ✅ Capture HTTP status from FastAPI or default to 500
     const status = error.response?.status || 500;

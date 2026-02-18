@@ -18,7 +18,7 @@ export const generateAssistantReply = async (req, res) => {
 
   try {
     // ✅ Call FastAPI service
-    const response = await runFastapiReply({
+    const reply = await runFastapiReply({
       prompt,
       language,
       code,
@@ -28,7 +28,7 @@ export const generateAssistantReply = async (req, res) => {
     });
 
     // ✅ Return FastAPI response to frontend
-    res.json(response.data);
+    res.json({ reply });
   } catch (error) {
     // ✅ Capture HTTP status from FastAPI or default to 500
     const status = error.response?.status || 500;
