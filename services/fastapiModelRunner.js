@@ -20,7 +20,7 @@ async function callFastAPI(endpoint, payload, token) {
   try {
     const { data } = await axios.post(url, payload, {
       headers: { Authorization: `Bearer ${token}` },
-      timeout: 30000,
+      timeout: 240000, 
     });
     console.log("✅ FastAPI response:", data);
     return data;
