@@ -14,7 +14,8 @@ if (!process.env.ML_SERVICE_URL) {
  * Helper to log and handle errors
  */
 async function callFastAPI(endpoint, payload, token) {
-  const url = `${process.env.ML_SERVICE_URL}${endpoint}`;
+  // ✅ Siempre añadimos /api/assistant al prefijo
+  const url = `${process.env.ML_SERVICE_URL}/api/assistant${endpoint}`;
 
   try {
     const { data } = await axios.post(url, payload, {
