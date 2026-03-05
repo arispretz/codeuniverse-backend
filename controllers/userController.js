@@ -108,7 +108,7 @@ export const getPublicUsers = async (req, res) => {
  */
 export const getUsers = async (req, res) => {
   try {
-  const users = await User.find({}, 'username email role firebaseUid team _id').lean();
+  const users = await User.find({}, 'username email role firebaseUid team').lean();
     console.log('Users found:', users);
     res.json(users);
   } catch (error) {
