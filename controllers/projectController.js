@@ -279,16 +279,13 @@ export const getProjectsFull = async (req, res) => {
           const kanbanEnriched = await Promise.all(
             (kanbanLists || []).map(async (list) => {
               const tasks = await Task.find({ source: "kanban", listId: list._id }).lean() || [];
-              const grouped = (tasks || []).reduce(
-                (acc, task) => {
-                  if (!task) return acc;
-                  const s = normalizeStatus(task?.status || "to do");
-                  (acc[s] ||= []).push({ ...task, status: s });
-                  return acc;
-                },
-                { todo: [], inprogress: [], review: [], done: [] }
-              );
-              return { ...list, tasks: grouped };
+
+              const normalizedTasks = tasks.map((task) => {
+                const s = normalizeStatus(task?.status || "to do");
+                return { ...task, status: s };
+              });
+
+              return { ...list, tasks: normalizedTasks };
             })
           );
 

@@ -43,11 +43,27 @@ export const taskSchema = new mongoose.Schema(
       type: String,
       enum: ["to do", "in progress", "review", "done"],
       default: "to do",
+      set: v => {
+        if (!v) return "to do";
+        const normalized = v.toLowerCase().replace("_", " ").trim();
+        if (normalized === "todo") return "to do";
+        if (normalized === "inprogress") return "in progress";
+        return normalized;
+      }
     },
+
     priority: {
       type: String,
-      enum: ["alta", "media", "baja"],
-      default: "media",
+      enum: ["High", "Medium", "Low"],
+      default: "Medium",
+      set: v => {
+        if (!v) return "Medium";
+        const lower = v.toLowerCase();
+        if (lower === "high") return "High";
+        if (lower === "medium") return "Medium";
+        if (lower === "low") return "Low";
+        return v;
+      }
     },
 
     deadline: { type: Date },
@@ -67,7 +83,6 @@ export const taskSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
       default: [],
     },
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     comments: { type: [CommentSchema], default: [] },
     history: { type: [HistorySchema], default: [] },
@@ -89,7 +104,6 @@ taskSchema.set("toJSON", {
     ret._id = ret._id?.toString();
     ret.listId = ret.listId?.toString();
     ret.projectId = ret.projectId?.toString();
-    ret.assignedTo = ret.assignedTo?.toString();
     ret.createdBy = ret.createdBy?.toString();
     ret.assignees = (ret.assignees || []).map((a) => a?.toString());
 

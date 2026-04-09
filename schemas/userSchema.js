@@ -32,7 +32,7 @@ export const userSchema = new mongoose.Schema(
       enum: ['admin', 'developer', 'manager', 'guest', 'ai_assistant'],
       default: 'guest',
     },
-    team: { type: String, default: null }, // 👈 New field for team association
+    team: { type: String, default: null }, 
     avatarUrl: { type: String },
     invitationCode: { type: String },
     level: { type: String },

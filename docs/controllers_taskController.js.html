@@ -33,22 +33,18 @@
  */
 
 import { Task } from '../models/Task.js';
+import { Project } from "../models/Project.js";
 import { backendStatus, normalizeStatus } from '../utils/utils.js';
+import mongoose from "mongoose";
 
 /* ------------------------- LOCAL TASKS ------------------------- */
 
 /**
  * Creates a local task.
- *
- * @async
- * @function createLocalTask
- * @param {Request} req - Express request object containing UID in params.
- * @param {Response} res - Express response object used to send results.
- * @returns {Promise&lt;void>} Sends JSON response with success message or error message.
  */
 export const createLocalTask = async (req, res) => {
   try {
-    const { projectId, title, description, status, deadline, assignedTo } = req.body;
+    const { projectId, title, description, status, deadline, assignees, priority, tags } = req.body;
     const listId = req.body.listId || req.params.listId;
 
     if (!title || !title.trim()) {
@@ -56,14 +52,6 @@ export const createLocalTask = async (req, res) => {
     }
     if (!listId) {
       return res.status(400).json({ error: "listId is required" });
-    }
-
-    let assignedUser = null;
-    if (assignedTo) {
-      assignedUser = {
-        _id: assignedTo._id || assignedTo,
-        uid: assignedTo.uid || req.user?.uid,
-      };
     }
 
     const backendStatusValue = backendStatus(status || "to do");
@@ -75,15 +63,20 @@ export const createLocalTask = async (req, res) => {
       description,
       status: backendStatusValue,
       deadline: deadline ? new Date(deadline) : null,
+      assignees: assignees || [],
+      priority: priority || "Medium",
+      tags: tags || [],
       source: "local",
       createdBy: req.user._id,
-      assignedTo: assignedUser,
       history: [
         { changedBy: req.user._id, change: "Local task created", changedAt: new Date() },
       ],
     });
 
-    res.status(201).json({ ...task.toObject(), status: normalizeStatus(task.status) });
+    res.status(201).json({
+      ...task.toObject(),
+      status: normalizeStatus(task.status),
+    });
   } catch (error) {
     console.error("❌ Error creating local task:", error);
     res.status(500).json({ error: "Error creating local task", details: error.message });
@@ -92,46 +85,34 @@ export const createLocalTask = async (req, res) => {
 
 /**
  * Retrieves local tasks.
- *
- * @async
- * @function getLocalTasks
- * @param {Request} req - Express request object containing UID in params.
- * @param {Response} res - Express response object used to send results.
- * @returns {Promise&lt;void>} Sends JSON response with success message or error message.
  */
 export const getLocalTasks = async (req, res) => {
   try {
     const { projectId, assignedTo } = req.query;
 
-    const filter = { source: 'local' };
+    const filter = { source: "local" };
     if (projectId) filter.projectId = projectId;
     if (assignedTo) {
-      filter.$or = [
-        { 'assignedTo._id': assignedTo },
-        { 'assignedTo.uid': assignedTo }
-      ];
+      filter.assignees = assignedTo;
     }
 
     const tasks = await Task.find(filter)
-      .populate('createdBy', 'username email')
+      .populate("createdBy", "username email")
       .lean();
 
-    const normalized = tasks.map(t => ({ ...t, status: normalizeStatus(t.status) }));
+    const normalized = tasks.map((t) => ({
+      ...t,
+      status: normalizeStatus(t.status),
+    }));
     res.json(normalized);
   } catch (error) {
     console.error("❌ Error retrieving local tasks:", error);
-    res.status(500).json({ error: 'Error retrieving local tasks', details: error.message });
+    res.status(500).json({ error: "Error retrieving local tasks", details: error.message });
   }
 };
 
 /**
  * Updates a local task.
- *
- * @async
- * @function updateLocalTask
- * @param {Request} req - Express request object containing UID in params.
- * @param {Response} res - Express response object used to send results.
- * @returns {Promise&lt;void>} Sends JSON response with success message or error message.
  */
 export const updateLocalTask = async (req, res) => {
   try {
@@ -141,11 +122,8 @@ export const updateLocalTask = async (req, res) => {
       form.status = backendStatus(form.status);
     }
 
-    if (form.assignedTo) {
-      form.assignedTo = {
-        _id: form.assignedTo._id || form.assignedTo,
-        uid: form.assignedTo.uid || req.user?.uid,
-      };
+    if (form.assignees) {
+      form.assignees = Array.isArray(form.assignees) ? form.assignees : [form.assignees];
     }
 
     const updated = await Task.findOneAndUpdate(
@@ -174,18 +152,35 @@ export const updateLocalTask = async (req, res) => {
  * @param {Response} res - Express response object used to send results.
  * @returns {Promise&lt;void>} Sends JSON response with success message or error message.
  */
+
 export const deleteLocalTask = async (req, res) => {
   try {
-    const deleted = await Task.findOneAndDelete({
-      _id: req.params.id,
-      source: 'local',
-      createdBy: req.user._id,
-    });
-    if (!deleted) return res.status(404).json({ error: 'Local task not found' });
-    res.json({ message: 'Local task deleted successfully' });
+    const query = {
+      _id: new mongoose.Types.ObjectId(req.params.id),
+      source: "local",
+    };
+
+    if (req.user.role.toLowerCase() === "developer") {
+      query.assignees = new mongoose.Types.ObjectId(req.user._id);
+    } else if (req.user.role.toLowerCase() === "manager") {
+      const projectIds = await Project.find({
+        $or: [
+          { ownerId: req.user._id },
+          { members: req.user._id }
+        ]
+      }).distinct("_id");
+      query.projectId = { $in: projectIds };
+    }
+
+    const deleted = await Task.findOneAndDelete(query);
+    if (!deleted) {
+      return res.status(404).json({ error: "Local task not found" });
+    }
+
+    res.json({ message: "Local task deleted successfully" });
   } catch (error) {
     console.error("❌ Error deleting local task:", error);
-    res.status(500).json({ error: 'Error deleting local task', details: error.message });
+    res.status(500).json({ error: "Error deleting local task", details: error.message });
   }
 };
 
@@ -208,12 +203,11 @@ export const createKanbanTask = async (req, res) => {
     if (!title || !title.trim()) {
       return res.status(400).json({ error: "Title is required" });
     }
-
     if (!listId) {
       return res.status(400).json({ error: "listId is required for kanban tasks" });
     }
 
-    const backendStatusValue = backendStatus(status || "to do");
+    const backendStatusValue = backendStatus(status || "todo");
 
     const task = await Task.create({
       projectId,
@@ -225,8 +219,8 @@ export const createKanbanTask = async (req, res) => {
       assignees: assignees || [],
       priority: priority || "medium",
       tags: tags || [],
-      source: "kanban",
-      createdBy: req.user._id,
+      source: "kanban",           
+      createdBy: req.user._id,    
       history: [
         {
           changedBy: req.user._id,
@@ -374,10 +368,31 @@ export const moveKanbanTask = async (req, res) => {
  * @param {Response} res - Express response object used to send results.
  * @returns {Promise&lt;void>} Sends JSON response with success message or error message.
  */
+
 export const deleteKanbanTask = async (req, res) => {
   try {
-    const deleted = await Task.findOneAndDelete({ _id: req.params.id, source: "kanban" });
-    if (!deleted) return res.status(404).json({ error: "Kanban task not found" });
+    const query = {
+      _id: new mongoose.Types.ObjectId(req.params.id),
+      source: "kanban",
+    };
+
+    if (req.user.role.toLowerCase() === "developer") {
+      query.assignees = new mongoose.Types.ObjectId(req.user._id);
+    } else if (req.user.role.toLowerCase() === "manager") {
+      const projectIds = await Project.find({
+        $or: [
+          { ownerId: req.user._id },
+          { members: req.user._id }
+        ]
+      }).distinct("_id");
+      query.projectId = { $in: projectIds };
+    }
+
+    const deleted = await Task.findOneAndDelete(query);
+    if (!deleted) {
+      return res.status(404).json({ error: "Kanban task not found" });
+    }
+
     res.json({ message: "Kanban task deleted successfully" });
   } catch (error) {
     console.error("❌ Error deleting kanban task:", error);
@@ -616,7 +631,7 @@ export const getTasksByListId = async (req, res) => {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Mar 05 2026 23:01:01 GMT+0000 (Coordinated Universal Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Thu Apr 09 2026 19:29:42 GMT-0300 (Argentina Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>
