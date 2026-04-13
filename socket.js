@@ -40,11 +40,10 @@ export function setupSocket(server) {
 
       socket.user = {
         uid: decodedToken.uid,
-        email: decodedToken.email,
         role: user?.role || "guest",
       };
 
-      console.log(`🔐 Authenticated socket: ${socket.user.email} (${socket.user.role})`);
+      console.log("🔐 Authenticated socket");
       next();
     } catch (err) {
       console.error("❌ Invalid token:", err.message);
@@ -53,13 +52,13 @@ export function setupSocket(server) {
   });
 
   io.on("connection", (socket) => {
-    console.log(`🧑 Connected: ${socket.user?.email}`);
+    console.log("🧑 Client connected");
 
     socket.emit("connected", { message: "Socket successfully connected 🚀" });
 
     // Heartbeat
     socket.on("heartbeat", (payload) => {
-      console.log(`💓 Heartbeat from ${socket.user?.email} at ${new Date(payload.ts).toISOString()}`);
+      console.log("💓 Heartbeat received");
       socket.emit("heartbeat_ack", { ts: Date.now() });
     });
 
@@ -109,7 +108,7 @@ export function setupSocket(server) {
     });
 
     socket.on("disconnect", (reason) => {
-      console.log(`👋 Disconnected: ${socket.user?.email} (${reason})`);
+      console.log(`👋 Client disconnected (${reason})`);
     });
   });
 
