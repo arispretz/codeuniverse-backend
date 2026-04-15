@@ -234,7 +234,7 @@ export const getProjectsFull = async (req, res) => {
     const { search = "", page = 1, limit = 10 } = req.query || {};
     const userId = req.user?._id;
     const userRole = req.user?.role; 
-
+    console.log("Auth user:", req.user);
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
     }
@@ -254,6 +254,8 @@ export const getProjectsFull = async (req, res) => {
       console.log("Tareas del usuario developer:", userTasks);
 
       const projectIds = [...new Set(userTasks.map(t => mongoose.Types.ObjectId(t.projectId)))];
+      console.log("Project IDs para query:", projectIds);
+
       query = { _id: { $in: projectIds } };
     } else {
       query = { members: userId };
