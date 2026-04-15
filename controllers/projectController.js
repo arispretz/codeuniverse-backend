@@ -244,6 +244,7 @@ export const getProjectsFull = async (req, res) => {
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
+
     let query = {};
 
     if (userRole === "admin") {
@@ -251,7 +252,11 @@ export const getProjectsFull = async (req, res) => {
     } else if (userRole === "manager") {
       query = { ownerId: userId };
     } else if (userRole === "developer") {
-      const userTasks = await Task.find({ assignees: userId }).select("projectId").lean();
+      console.log("Entrando en bloque developer con userId:", userId);
+
+      const userTasks = await Task.find({ assignees: mongoose.Types.ObjectId(userId) })
+                                  .select("projectId")
+                                  .lean();
       console.log("Tareas del usuario developer:", userTasks);
 
       const projectIds = [...new Set(userTasks.map(t => mongoose.Types.ObjectId(t.projectId)))];
@@ -261,6 +266,7 @@ export const getProjectsFull = async (req, res) => {
     } else {
       query = { members: userId };
     }
+
 
     const projects = await Project.find(query)
       .skip(skip)
