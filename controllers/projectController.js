@@ -267,7 +267,6 @@ export const getProjectsFull = async (req, res) => {
       query = { members: userId };
     }
 
-
     const projects = await Project.find(query)
       .skip(skip)
       .limit(limitNum)
