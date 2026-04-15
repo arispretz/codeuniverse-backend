@@ -250,11 +250,10 @@ export const getProjectsFull = async (req, res) => {
     } else if (userRole === "manager") {
       query = { ownerId: userId };
     } else if (userRole === "developer") {
-      const userTasks = await Task.find({ assignees: "69dd7c4eb556d0ca9fe7a0dc" }).select("projectId").lean();
-      console.log(userTasks);
+      const userTasks = await Task.find({ assignees: userId }).select("projectId").lean();
+      console.log("Tareas del usuario developer:", userTasks);
 
-      //const userTasks = await Task.find({ assignees: userId }).select("projectId").lean();
-      const projectIds = [...new Set(userTasks.map(t => t.projectId))];
+      const projectIds = [...new Set(userTasks.map(t => mongoose.Types.ObjectId(t.projectId)))];
       query = { _id: { $in: projectIds } };
     } else {
       query = { members: userId };
