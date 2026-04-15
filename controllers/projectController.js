@@ -231,11 +231,10 @@ export const createFullProject = async (req, res) => {
  */
 export const getProjectsFull = async (req, res) => {
   try {
-    console.log("req.user recibido en getProjectsFull:", req.user);
     const { search = "", page = 1, limit = 10 } = req.query || {};
     const userId = req.user?._id;
     const userRole = req.user?.role; 
-    console.log("Auth user:", req.user);
+
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
     }
@@ -244,27 +243,16 @@ export const getProjectsFull = async (req, res) => {
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-
     let query = {};
 
     if (userRole === "admin") {
       query = {};
-    } else if (userRole === "manager") {
-      query = { ownerId: userId };
-    } else if (userRole === "developer") {
-      console.log("Entrando en bloque developer con userId:", userId);
-
-      const userTasks = await Task.find({ assignees: mongoose.Types.ObjectId(userId) })
-                                  .select("projectId")
-                                  .lean();
-      console.log("Tareas del usuario developer:", userTasks);
-
-      const projectIds = [...new Set(userTasks.map(t => mongoose.Types.ObjectId(t.projectId)))];
-      console.log("Project IDs para query:", projectIds);
-
-      query = { _id: { $in: projectIds } };
     } else {
-      query = { members: userId };
+      query = { $or: [{ ownerId: userId }, { members: userId }] };
+    }
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
     }
 
     const projects = await Project.find(query)
@@ -366,6 +354,53 @@ export const getProjectFullById = async (req, res) => {
   } catch (error) {
     console.error("❌ Error retrieving full project:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/**
+ * Adds a member to a project.
+ *
+ * @async
+ * @function addMemberToProject
+ * @param {Request} req - Express request object containing projectId in params and memberId in body.
+ * @param {Response} res - Express response object used to send results.
+ * @returns {Promise<void>} Sends JSON response with success message or error message.
+ */
+export const addMemberToProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    if (userRole !== "admin" && project.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ error: "Not authorized to add members" });
+    }
+
+    if (project.members.includes(memberId)) {
+      return res.status(400).json({ error: "Member already in project" });
+    }
+
+    project.members.push(memberId);
+    await project.save();
+
+    const updatedProject = await Project.findById(projectId)
+      .populate("ownerId", "username email")
+      .populate("members", "username email avatar")
+      .lean();
+
+    res.json({ message: "Member added successfully", project: updatedProject });
+  } catch (error) {
+    res.status(500).json({ error: "Error adding member", details: error.message });
   }
 };
 

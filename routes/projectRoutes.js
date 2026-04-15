@@ -14,6 +14,7 @@ import {
   createFullProject,
   getProjectsFull,
   getProjectFullById,
+  addMemberToProject,
   createLocalList,
   getLocalLists,
   createKanbanList,
@@ -67,6 +68,12 @@ projectRouter.get('/projects/:id', auth, getProjectById);
  * Retrieves all projects for the authenticated user.
  */
 projectRouter.get('/projects', auth, getProjects);
+
+/**
+ * POST /projects/:projectId/members
+ * Adds a member to a project.
+ */
+projectRouter.post('/projects/:projectId/members', auth, addMemberToProject);
 
 /**
  * 📋 Local Lists
