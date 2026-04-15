@@ -231,6 +231,7 @@ export const createFullProject = async (req, res) => {
  */
 export const getProjectsFull = async (req, res) => {
   try {
+    console.log("req.user recibido en getProjectsFull:", req.user);
     const { search = "", page = 1, limit = 10 } = req.query || {};
     const userId = req.user?._id;
     const userRole = req.user?.role; 
