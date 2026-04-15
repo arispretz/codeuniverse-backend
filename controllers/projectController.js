@@ -247,12 +247,14 @@ export const getProjectsFull = async (req, res) => {
 
     if (userRole === "admin") {
       query = {};
+    } else if (userRole === "manager") {
+      query = { ownerId: userId };
+    } else if (userRole === "developer") {
+      const userTasks = await Task.find({ assignees: userId }).select("projectId").lean();
+      const projectIds = [...new Set(userTasks.map(t => t.projectId))];
+      query = { _id: { $in: projectIds } };
     } else {
-      query = { $or: [{ ownerId: userId }, { members: userId }] };
-    }
-
-    if (search) {
-      query.name = { $regex: search, $options: "i" };
+      query = { members: userId };
     }
 
     const projects = await Project.find(query)
