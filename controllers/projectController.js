@@ -362,14 +362,15 @@ export const getProjectFullById = async (req, res) => {
  *
  * @async
  * @function addMemberToProject
- * @param {Request} req - Express request object containing projectId in params and memberId in body.
+ * @param {Request} req - Express request object containing projectId in params and email or memberId in body.
  * @param {Response} res - Express response object used to send results.
  * @returns {Promise<void>} Sends JSON response with success message or error message.
  */
+
 export const addMemberToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { memberId } = req.body;
+    const { email, memberId } = req.body;
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
@@ -377,20 +378,40 @@ export const addMemberToProject = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
+    // Find project
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
+    // Authorization: only owner or admin can add members
     if (userRole !== "admin" && project.ownerId.toString() !== userId.toString()) {
       return res.status(403).json({ error: "Not authorized to add members" });
     }
 
-    if (project.members.includes(memberId)) {
+    // Resolve user either by email or memberId
+    let userToAdd = null;
+    if (email) {
+      userToAdd = await User.findOne({ email });
+      if (!userToAdd) {
+        return res.status(404).json({ error: "User not found" });
+      }
+    } else if (memberId) {
+      userToAdd = await User.findById(memberId);
+      if (!userToAdd) {
+        return res.status(404).json({ error: "User not found" });
+      }
+    } else {
+      return res.status(400).json({ error: "Email or memberId required" });
+    }
+
+    // Prevent duplicates
+    if (project.members.includes(userToAdd._id)) {
       return res.status(400).json({ error: "Member already in project" });
     }
 
-    project.members.push(memberId);
+    // Add member
+    project.members.push(userToAdd._id);
     await project.save();
 
     const updatedProject = await Project.findById(projectId)
