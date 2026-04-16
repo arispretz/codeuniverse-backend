@@ -374,45 +374,61 @@ export const addMemberToProject = async (req, res) => {
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
+    // Debug logs
+    console.log("=== addMemberToProject called ===");
+    console.log("req.user:", req.user);
+    console.log("projectId (params):", projectId);
+    console.log("body:", req.body);
+    console.log("userId:", userId, "userRole:", userRole);
+
     if (!userId) {
+      console.log("❌ User not authenticated");
       return res.status(401).json({ error: "User not authenticated" });
     }
 
     // Find project
     const project = await Project.findById(projectId);
+    console.log("Project found:", project);
     if (!project) {
+      console.log("❌ Project not found");
       return res.status(404).json({ error: "Project not found" });
     }
 
     // Authorization: allow admin, manager, or owner
     if (!["admin", "manager"].includes(userRole) && project.ownerId.toString() !== userId.toString()) {
+      console.log("❌ User not authorized to add members");
       return res.status(403).json({ error: "Not authorized to add members" });
     }
 
     // Resolve user either by email or memberId
     let userToAdd = null;
     if (email) {
+      console.log("Looking up user by email:", email);
       userToAdd = await User.findOne({ email });
-      if (!userToAdd) {
-        return res.status(404).json({ error: "User not found" });
-      }
     } else if (memberId) {
+      console.log("Looking up user by memberId:", memberId);
       userToAdd = await User.findById(memberId);
-      if (!userToAdd) {
-        return res.status(404).json({ error: "User not found" });
-      }
     } else {
+      console.log("❌ Neither email nor memberId provided");
       return res.status(400).json({ error: "Email or memberId required" });
     }
 
+    console.log("User to add:", userToAdd);
+    if (!userToAdd) {
+      console.log("❌ User not found");
+      return res.status(404).json({ error: "User not found" });
+    }
+
     // Prevent duplicates
-    if (project.members.includes(userToAdd._id)) {
+    if (Array.isArray(project.members) && project.members.includes(userToAdd._id)) {
+      console.log("❌ User is already a member of the project");
       return res.status(400).json({ error: "Member already in project" });
     }
 
     // Add member
     project.members.push(userToAdd._id);
     await project.save();
+    console.log("✅ Member added successfully");
 
     const updatedProject = await Project.findById(projectId)
       .populate("ownerId", "username email")
@@ -421,6 +437,7 @@ export const addMemberToProject = async (req, res) => {
 
     res.json({ message: "Member added successfully", project: updatedProject });
   } catch (error) {
+    console.error("❌ Internal error in addMemberToProject:", error);
     res.status(500).json({ error: "Error adding member", details: error.message });
   }
 };
