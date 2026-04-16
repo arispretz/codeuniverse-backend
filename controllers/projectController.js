@@ -384,8 +384,8 @@ export const addMemberToProject = async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Authorization: only owner or admin can add members
-    if (userRole !== "admin" && project.ownerId.toString() !== userId.toString()) {
+    // Authorization: allow admin, manager, or owner
+    if (!["admin", "manager"].includes(userRole) && project.ownerId.toString() !== userId.toString()) {
       return res.status(403).json({ error: "Not authorized to add members" });
     }
 
