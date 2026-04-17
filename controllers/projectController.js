@@ -369,6 +369,7 @@ export const getProjectFullById = async (req, res) => {
 
 export const addMemberToProject = async (req, res) => {
   try {
+    console.log("req.user at controller:", req.user);
     const { projectId } = req.params;
     const { email, memberId } = req.body;
     const userId = req.user?._id;
