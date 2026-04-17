@@ -31,7 +31,6 @@ export async function auth(req, res, next) {
   try {
     // ✅ Verify Firebase token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    console.log("Decoded Firebase token:", decodedToken);
 
     const { uid, email } = decodedToken;
 
@@ -42,26 +41,21 @@ export async function auth(req, res, next) {
 
     // ✅ Find or create user in MongoDB
     let user = await User.findOne({ firebaseUid: uid });
-    console.log("User lookup by firebaseUid:", user);
 
     if (!user) {
       const existingUser = await User.findOne({ email });
-      console.log("User lookup by email:", existingUser);
 
       if (existingUser) {
         existingUser.firebaseUid = uid;
         await existingUser.save();
         user = existingUser;
-        console.log("Updated existing user with firebaseUid:", user);
       } else {
         user = await User.create({
           firebaseUid: uid,
           email,
           username: email.split('@')[0],
           role: 'guest',
-        });
-        console.log("Created new user:", user);
-      }
+        });      }
     }
 
     // ✅ Attach user info to request
@@ -72,9 +66,6 @@ export async function auth(req, res, next) {
       email: user.email,
       role: user.role,
     };
-
-    console.log("req.user set to:", req.user);
-
     next();
   } catch (error) {
     console.error('❌ Token verification failed:', error.message);

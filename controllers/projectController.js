@@ -11,8 +11,7 @@ import { KanbanList } from '../models/KanbanList.js';
 import { Task } from '../models/Task.js';
 import { backendStatus, normalizeStatus } from '../utils/utils.js';
 import { User } from '../models/User.js';
-console.log("User model:", User);
-console.log("Project model:", Project);
+
 /* ------------------------- PROJECT CONTROLLERS ------------------------- */
 
 /**
@@ -371,79 +370,53 @@ export const getProjectFullById = async (req, res) => {
 
 export const addMemberToProject = async (req, res) => {
   try {
-    console.log("req.user at controller:", req.user);
     const { projectId } = req.params;
     const { email, memberId } = req.body;
     const userId = req.user?._id;
     const userRole = req.user?.role;
 
-    // Debug logs
-    console.log("=== addMemberToProject called ===");
-    console.log("req.user:", req.user);
-    console.log("projectId (params):", projectId);
-    console.log("body:", req.body);
-    console.log("userId:", userId, "userRole:", userRole);
-
     if (!userId) {
-      console.log("❌ User not authenticated");
       return res.status(401).json({ error: "User not authenticated" });
     }
 
     // Find project
     const project = await Project.findById(projectId);
-    console.log("Project found:", project);
     if (!project) {
-      console.log("❌ Project not found");
       return res.status(404).json({ error: "Project not found" });
     }
 
     // Authorization: allow admin, manager, or owner
     if (!["admin", "manager"].includes(userRole) && project.ownerId.toString() !== userId.toString()) {
-      console.log("❌ User not authorized to add members");
       return res.status(403).json({ error: "Not authorized to add members" });
     }
 
     // Resolve user either by email or memberId
     let userToAdd = null;
     if (email) {
-      console.log("Looking up user by email:", email);
       userToAdd = await User.findOne({ email });
     } else if (memberId) {
-      console.log("Looking up user by memberId:", memberId);
       userToAdd = await User.findById(memberId);
     } else {
-      console.log("❌ Neither email nor memberId provided");
       return res.status(400).json({ error: "Email or memberId required" });
     }
 
-    console.log("User to add:", userToAdd);
     if (!userToAdd) {
-      console.log("❌ User not found");
       return res.status(404).json({ error: "User not found" });
     }
 
     // Prevent duplicates (comparando ObjectId como string)
     if (project.members.some(m => m.toString() === userToAdd._id.toString())) {
-      console.log("❌ User is already a member of the project");
       return res.status(400).json({ error: "Member already in project" });
     }
-
-    // Debug antes de agregar
-    console.log("Members before:", project.members.map(m => m.toString()));
-    console.log("User to add:", userToAdd._id.toString());
 
     // Add member
     project.members.push(userToAdd._id);
     await project.save();
-    console.log("✅ Member added successfully");
 
-    // Debug después de guardar
     const updatedProject = await Project.findById(projectId)
       .populate("ownerId", "username email")
       .populate("members", "username email avatar")
       .lean();
-
-    console.log("Members after:", updatedProject.members.map(m => m._id.toString()));
 
     res.json({ message: "Member added successfully", project: updatedProject });
   } catch (error) {
