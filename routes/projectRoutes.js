@@ -75,23 +75,21 @@ projectRouter.get('/projects', auth, getProjects);
  */
 // projectRouter.post('/projects/:projectId/members', auth, addMemberToProject);
 // Route with explicit logging
-projectRouter.post("/projects/:projectId/members", (req, res, next) => {
-  console.log("=== Incoming request to add member ===");
-  console.log("Method:", req.method, "Path:", req.originalUrl);
-  console.log("Headers:", req.headers);
+	projectRouter.post("/projects/:projectId/members", (req, res, next) => {
+	  console.log("=== Incoming POST /projects/:projectId/members ===");
+	  console.log("Authorization header:", req.headers.authorization);
+	
+	  auth(req, res, (err) => {
+	    if (err) {
+	      console.error("Auth middleware error:", err);
+	      return next(err);
+	    }
+	    console.log("Auth middleware completed. req.user is:", req.user);
+	
+	    addMemberToProject(req, res, next);
+	  });
+	});
 
-  // Pass control to auth middleware
-  auth(req, res, (err) => {
-    if (err) {
-      console.error("Auth middleware error:", err);
-      return next(err);
-    }
-    console.log("Auth middleware completed. req.user is:", req.user);
-
-    // Now call the controller
-    addMemberToProject(req, res, next);
-  });
-});
 /**
  * 📋 Local Lists
  */
