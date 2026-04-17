@@ -420,21 +420,28 @@ export const addMemberToProject = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Prevent duplicates
-    if (Array.isArray(project.members) && project.members.includes(userToAdd._id)) {
+    // Prevent duplicates (comparando ObjectId como string)
+    if (project.members.some(m => m.toString() === userToAdd._id.toString())) {
       console.log("❌ User is already a member of the project");
       return res.status(400).json({ error: "Member already in project" });
     }
+
+    // Debug antes de agregar
+    console.log("Members before:", project.members.map(m => m.toString()));
+    console.log("User to add:", userToAdd._id.toString());
 
     // Add member
     project.members.push(userToAdd._id);
     await project.save();
     console.log("✅ Member added successfully");
 
+    // Debug después de guardar
     const updatedProject = await Project.findById(projectId)
       .populate("ownerId", "username email")
       .populate("members", "username email avatar")
       .lean();
+
+    console.log("Members after:", updatedProject.members.map(m => m._id.toString()));
 
     res.json({ message: "Member added successfully", project: updatedProject });
   } catch (error) {
