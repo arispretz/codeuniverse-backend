@@ -10,7 +10,9 @@ import { LocalList } from '../models/LocalList.js';
 import { KanbanList } from '../models/KanbanList.js';
 import { Task } from '../models/Task.js';
 import { backendStatus, normalizeStatus } from '../utils/utils.js';
-
+import { User } from '../models/User.js';
+console.log("User model:", User);
+console.log("Project model:", Project);
 /* ------------------------- PROJECT CONTROLLERS ------------------------- */
 
 /**
