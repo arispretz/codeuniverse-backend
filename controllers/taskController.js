@@ -98,17 +98,31 @@ export const updateLocalTask = async (req, res) => {
       form.assignees = Array.isArray(form.assignees) ? form.assignees : [form.assignees];
     }
 
+    const query = { _id: req.params.id, source: "local" };
+
+    if (req.user.role.toLowerCase() === "developer") {
+      query.assignees = req.user._id;
+    } else if (["manager", "admin"].includes(req.user.role.toLowerCase())) {
+    } else {
+      query.createdBy = req.user._id;
+    }
+
     const updated = await Task.findOneAndUpdate(
-      { _id: req.params.id, source: "local", createdBy: req.user._id },
+      query,
       { $set: { ...form, syncedAt: new Date() } },
       { new: true }
     );
 
     if (!updated) {
-      return res.status(404).json({ error: "Local task not found" });
+      return res.status(404).json({ error: "Local task not found or not authorized" });
     }
 
-    res.json({ ...updated.toObject(), status: normalizeStatus(updated.status) });
+    res.json({
+      ...updated.toObject(),
+      status: normalizeStatus(updated.status),
+      assignees: updated.assignees || [],
+      assignedTo: updated.assignedTo || null,
+    });
   } catch (error) {
     console.error("❌ Error updating local task:", error);
     res.status(500).json({ error: "Error updating local task", details: error.message });
@@ -124,7 +138,6 @@ export const updateLocalTask = async (req, res) => {
  * @param {Response} res - Express response object used to send results.
  * @returns {Promise<void>} Sends JSON response with success message or error message.
  */
-
 export const deleteLocalTask = async (req, res) => {
   try {
     const query = {
@@ -132,9 +145,11 @@ export const deleteLocalTask = async (req, res) => {
       source: "local",
     };
 
-    if (req.user.role.toLowerCase() === "developer") {
-      query.assignees = new mongoose.Types.ObjectId(req.user._id);
-    } else if (req.user.role.toLowerCase() === "manager") {
+    const role = req.user.role.toLowerCase();
+
+    if (role === "developer") {
+      query.assignees = req.user._id;
+    } else if (role === "manager" || role === "admin") {
       const projectIds = await Project.find({
         $or: [
           { ownerId: req.user._id },
@@ -142,14 +157,24 @@ export const deleteLocalTask = async (req, res) => {
         ]
       }).distinct("_id");
       query.projectId = { $in: projectIds };
+    } else {
+      query.createdBy = req.user._id;
     }
 
     const deleted = await Task.findOneAndDelete(query);
     if (!deleted) {
-      return res.status(404).json({ error: "Local task not found" });
+      return res.status(404).json({ error: "Local task not found or not authorized" });
     }
 
-    res.json({ message: "Local task deleted successfully" });
+    res.json({
+      message: "Local task deleted successfully",
+      deletedTask: {
+        ...deleted.toObject(),
+        status: normalizeStatus(deleted.status),
+        assignees: deleted.assignees || [],
+        assignedTo: deleted.assignedTo || null,
+      },
+    });
   } catch (error) {
     console.error("❌ Error deleting local task:", error);
     res.status(500).json({ error: "Error deleting local task", details: error.message });
