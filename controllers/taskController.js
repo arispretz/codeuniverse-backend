@@ -98,6 +98,10 @@ export const updateLocalTask = async (req, res) => {
       form.assignees = Array.isArray(form.assignees) ? form.assignees : [form.assignees];
     }
 
+    if (form.assignedTo === undefined) {
+      delete form.assignedTo; 
+    }
+
     const query = { _id: req.params.id, source: "local" };
 
     if (req.user.role.toLowerCase() === "developer") {
@@ -120,7 +124,7 @@ export const updateLocalTask = async (req, res) => {
     res.json({
       ...updated.toObject(),
       status: normalizeStatus(updated.status),
-      assignees: updated.assignees || [],
+      assignees: Array.isArray(updated.assignees) ? updated.assignees : [],
       assignedTo: updated.assignedTo || null,
     });
   } catch (error) {
@@ -171,7 +175,7 @@ export const deleteLocalTask = async (req, res) => {
       deletedTask: {
         ...deleted.toObject(),
         status: normalizeStatus(deleted.status),
-        assignees: deleted.assignees || [],
+        assignees: Array.isArray(deleted.assignees) ? deleted.assignees : [],
         assignedTo: deleted.assignedTo || null,
       },
     });
